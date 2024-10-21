@@ -1,0 +1,4 @@
+[workspace]
+members = ["tower-ipfilter", "examples/axum"]
+
+resolver = "2"

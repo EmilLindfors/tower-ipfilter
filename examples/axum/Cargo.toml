@@ -1,0 +1,13 @@
+[package]
+name = "axum"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = { git = "https://github.com/tokio-rs/axum.git", branch = "main", features = ["macros"] }
+tokio = {version = "1.0.1", features = ["full"]}
+tower-http = { version = "0.5.2", features = ["trace", "cors"]}
+tracing = "0.1.26"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tower-ipfilter = { path = "../../tower-ipfilter", features = ["axum"]}
+tower = "0.5.1"
