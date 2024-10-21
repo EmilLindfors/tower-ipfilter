@@ -1,5 +1,6 @@
 [package]
 name = "tower-ipfilter"
+description = "A middleware for filtering requests based on IP addresses"
 edition = "2021"
 version = "0.1.0"
 authors = ["Emil Lindfors <[email protected]>"]
