@@ -1,4 +1,3 @@
-use core::panic;
 use std::{
     net::IpAddr,
     task::{Context, Poll},
@@ -72,7 +71,6 @@ pub struct ConnectionInfo {
 mod axum_impl {
     use super::*;
     use axum::extract::connect_info::ConnectInfo;
-    use tracing::debug;
     use std::net::SocketAddr;
 
     pub fn extract_ip_axum<B>(req: &Request<B>) -> Option<IpAddr> {
@@ -135,4 +133,3 @@ pub use axum_impl::extract_ip_axum;
 
 #[cfg(feature = "hyper")]
 pub use hyper_impl::extract_ip_hyper;
-use tracing::debug;

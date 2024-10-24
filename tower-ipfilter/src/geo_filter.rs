@@ -3,11 +3,7 @@ use ipnetwork::{IpNetwork, Ipv4Network, Ipv6Network};
 use tracing::info;
 
 use crate::{
-    compress::{load_compressed_data, save_compressed_data},
-    extract::extract_and_parse_csv,
-    network_filter_service::NetworkFilter,
-    types::{CountryLocation, Mode},
-    IpServiceTrait,
+    body::{create_geo_access_denied_response, IpResponseBody}, compress::{load_compressed_data, save_compressed_data}, extract::extract_and_parse_csv, network_filter_service::NetworkFilter, types::{CountryLocation, Mode}
 };
 use std::{
     error::Error,
@@ -154,7 +150,7 @@ impl GeoIpv4Filter {
         country
     }
 
-    pub async fn add_ip(&self, ip: Ipv4Addr, reason: String, date: String) {
+    pub async fn add_ip(&self, ip: Ipv4Addr) {
         if let Some(country) = self.get_country_for_ip(&ip).await {
             self.addresses.insert(ip, country.clone());
         }
@@ -164,9 +160,10 @@ impl GeoIpv4Filter {
         self.addresses.remove(&ip);
     }
 
-    pub async fn add_network(&self, network: Ipv4Network, reason: String, date: String) {
+    pub async fn add_network(&self, network: Ipv4Network) {
         if let Some(country) = self.get_country_for_ip(&network.network()).await {
             self.networks.insert(network, country.clone());
+            tracing::info!("Added network: {} from country: {}", network, country.country_name.unwrap());
         }
     }
 
@@ -176,8 +173,10 @@ impl GeoIpv4Filter {
 
     pub fn set_countries(&self, countries: Vec<String>) {
         self.countries.clear();
+        tracing::info!("Setting countries: {:?}, mode: {}", countries, self.mode);
         for country in countries {
             self.countries.insert(country, true);
+            
         }
     }
 
@@ -192,8 +191,14 @@ impl GeoIpv4Filter {
         if let Some(country) = self.get_country_for_ip(ip).await {
             let name = country.country_name.unwrap();
             let is_blocked = self.is_country_blocked(&name).await;
-            tracing::info!("{} is blocked: {}", is_blocked, name);
-            is_blocked
+            if is_blocked {
+                tracing::warn!("Blocked ip: {} from country: {}", ip, name);
+                return true;
+            } else {
+                tracing::debug!("Allowed ip: {} from country: {}", ip, name);
+                return false;
+            }
+            
         } else {
             false
         }
@@ -210,7 +215,7 @@ impl NetworkFilter for GeoIpv4Filter {
             if network {
                 match ip.to_network() {
                     IpNetwork::V4(ip) => {
-                        self.add_network(ip, "Blocked".to_string(), "2021-01-01".to_string())
+                        self.add_network(ip)
                             .await;
                     }
                     _ => {}
@@ -218,7 +223,7 @@ impl NetworkFilter for GeoIpv4Filter {
             } else {
                 match ip.to_ip_addr() {
                     IpAddr::V4(ip) => {
-                        self.add_ip(ip, "Blocked".to_string(), "2021-01-01".to_string())
+                        self.add_ip(ip)
                             .await;
                     }
                     _ => {}
@@ -254,9 +259,13 @@ impl NetworkFilter for GeoIpv4Filter {
     fn is_blocked(&self, ip: impl IpAddrExt) -> impl std::future::Future<Output = bool> + Send {
         async move {
             match ip.to_ip_addr() {
-                IpAddr::V4(ip) => !self.is_ip_blocked(&ip).await,
+                IpAddr::V4(ip) => self.is_ip_blocked(&ip).await,
                 _ => false,
             }
         }
+    }
+
+    fn to_denied_response<T: http_body::Body>(&self) -> http::Response<IpResponseBody<T>>{
+        create_geo_access_denied_response()
     }
 }

@@ -2,7 +2,7 @@
 name = "tower-ipfilter"
 description = "A middleware for filtering requests based on IP addresses"
 edition = "2021"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Emil Lindfors <[email protected]>"]
 keywords = ["async", "tower", "http", "ipfilter", "axum"]
 categories = ["asynchronous", "web-programming", "web-programming::http-server"]

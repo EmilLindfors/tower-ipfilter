@@ -1,3 +1,4 @@
 /target
 /Cargo.lock
 /GeoLite2-*.zip
+/examples/axum/geo*.gz

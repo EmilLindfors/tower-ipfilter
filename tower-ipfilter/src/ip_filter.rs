@@ -1,12 +1,14 @@
-use std::{
-    marker::PhantomData,
-    net::IpAddr,
-};
+use std::{marker::PhantomData, net::IpAddr};
 
 use dashmap::DashMap;
 use ipnetwork::IpNetwork;
 
-use crate::{geo_filter::IpAddrExt, network_filter_service::NetworkFilter, types::Mode};
+use crate::{
+    body::{create_ip_address_denied_response, IpResponseBody},
+    geo_filter::IpAddrExt,
+    network_filter_service::NetworkFilter,
+    types::Mode,
+};
 
 #[derive(Debug, Clone)]
 pub struct IpMetaData {
@@ -176,44 +178,52 @@ impl NetworkFilter for IpFilter<V4> {
             }
         }
     }
+
+    fn to_denied_response<T: http_body::Body>(&self) -> http::Response<IpResponseBody<T>> {
+        create_ip_address_denied_response()
+    }
 }
 
 impl NetworkFilter for IpFilter<V6> {
-  fn block(
-      &self,
-      ip: impl IpAddrExt,
-      network: bool,
-  ) -> impl std::future::Future<Output = ()> + Send {
-      async move {
-          if !ip.is_ipv4() {
-              self.block_ip(ip, network).await;
-          } else {
-              panic!("Invalid IP address");
-          }
-      }
-  }
+    fn block(
+        &self,
+        ip: impl IpAddrExt,
+        network: bool,
+    ) -> impl std::future::Future<Output = ()> + Send {
+        async move {
+            if !ip.is_ipv4() {
+                self.block_ip(ip, network).await;
+            } else {
+                panic!("Invalid IP address");
+            }
+        }
+    }
 
-  fn unblock(
-      &self,
-      ip: impl IpAddrExt,
-      network: bool,
-  ) -> impl std::future::Future<Output = ()> + Send {
-      async move {
-          if !ip.is_ipv4() {
-              self.unblock_ip(ip, network).await;
-          } else {
-              panic!("Invalid IP address");
-          }
-      }
-  }
+    fn unblock(
+        &self,
+        ip: impl IpAddrExt,
+        network: bool,
+    ) -> impl std::future::Future<Output = ()> + Send {
+        async move {
+            if !ip.is_ipv4() {
+                self.unblock_ip(ip, network).await;
+            } else {
+                panic!("Invalid IP address");
+            }
+        }
+    }
 
-  fn is_blocked(&self, ip: impl IpAddrExt) -> impl std::future::Future<Output = bool> + Send {
-      async move {
-          if !ip.is_ipv4() {
-              self.is_ip_blocked(&ip.to_ip_addr()).await
-          } else {
-              panic!("Invalid IP address");
-          }
-      }
-  }
+    fn is_blocked(&self, ip: impl IpAddrExt) -> impl std::future::Future<Output = bool> + Send {
+        async move {
+            if !ip.is_ipv4() {
+                self.is_ip_blocked(&ip.to_ip_addr()).await
+            } else {
+                panic!("Invalid IP address");
+            }
+        }
+    }
+
+    fn to_denied_response<T: http_body::Body>(&self) -> http::Response<IpResponseBody<T>> {
+        create_ip_address_denied_response()
+    }
 }

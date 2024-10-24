@@ -1,16 +1,7 @@
-use std::{collections::HashMap, error::Error, net::{IpAddr, Ipv4Addr}, path::{Path, PathBuf}};
+use std::collections::HashMap;
 
 use bincode::{Decode, Encode};
-use dashmap::DashMap;
-use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
-use tracing::info;
-use zip::DateTime;
-
-use crate::{
-    compress::{load_compressed_data, save_compressed_data},
-    extract::extract_and_parse_csv,
-};
 
 #[derive(Debug, Deserialize, Serialize, Encode, Decode, PartialEq)]
 pub struct IpBlock {
@@ -65,6 +56,15 @@ pub enum Mode {
 impl Default for Mode {
     fn default() -> Self {
         Mode::BlackList
+    }
+}
+
+impl std::fmt::Display for Mode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Mode::BlackList => write!(f, "BlackList"),
+            Mode::WhiteList => write!(f, "WhiteList"),
+        }
     }
 }
 

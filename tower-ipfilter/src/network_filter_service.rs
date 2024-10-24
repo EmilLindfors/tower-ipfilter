@@ -1,24 +1,18 @@
 use crate::{
-    body::{create_access_denied_response, create_ip_not_found_response, GeoIpResponseBody}, connection_info_service::ConnectionInfo, geo_filter::IpAddrExt, IpServiceTrait
+    body::{create_ip_not_found_response, IpResponseBody}, connection_info_service::ConnectionInfo, geo_filter::IpAddrExt
 };
 use bytes::Bytes;
 use futures_lite::FutureExt;
 use http::{Request, Response};
 use http_body::Body;
-use ipnetwork::IpNetwork;
-use pin_project_lite::pin_project;
-use std::{future::Future, sync::Arc};
-use std::{
-    net::IpAddr,
-    task::{Context, Poll},
-};
+use std::{future::Future, sync::Arc, task::{Context, Poll}};
 use tower_service::Service;
-use tracing::debug;
 
 pub trait NetworkFilter: Send + Sync + 'static {
     fn block(&self, ip: impl IpAddrExt, network: bool) -> impl Future<Output = ()> + Send;
     fn unblock(&self, ip: impl IpAddrExt, network: bool) -> impl Future<Output = ()> + Send;
     fn is_blocked(&self, ip: impl IpAddrExt) -> impl Future<Output = bool> + Send;
+    fn to_denied_response<T: http_body::Body>(&self) -> http::Response<IpResponseBody<T>>;
 }
 
 #[derive(Clone)]
@@ -78,7 +72,7 @@ where
     ResBody: Body<Data = Bytes> + Send + 'static,
     ResBody::Error: std::error::Error + Send + Sync + 'static,
 {
-    type Response = Response<GeoIpResponseBody<ResBody>>;
+    type Response = Response<IpResponseBody<ResBody>>;
     type Error = S::Error;
     type Future = futures_lite::future::Boxed<Result<Self::Response, Self::Error>>;
 
@@ -87,7 +81,7 @@ where
     }
 
     fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
-        let geo_service = self.filter.clone();
+        let ip_service = self.filter.clone();
         let inner = self.inner.clone();
         let mut inner = std::mem::replace(&mut self.inner, inner);
 
@@ -97,14 +91,14 @@ where
                 .get::<ConnectionInfo>()
                 .map(|socket_addr| socket_addr.ip_addr)
             {
-                if geo_service.is_blocked(ip).await {
-                    return Ok(create_access_denied_response());
+                if ip_service.is_blocked(ip).await {
+                    return Ok(ip_service.to_denied_response());
                  
                 } else {
                     return inner
                     .call(req)
                     .await
-                    .map(|res| res.map(GeoIpResponseBody::new));
+                    .map(|res| res.map(IpResponseBody::new));
                 }
             } else {
                 tracing::warn!("No IP address found in request, blocking request");
@@ -121,7 +115,7 @@ pub fn filter<F: NetworkFilter>(filter: F) -> FilterLayer<F> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{geo_filter::GeoIpv4Filter, ip_filter::IpFilter, types::CountryLocation};
+    use crate::{geo_filter::GeoIpv4Filter, types::CountryLocation};
 
     use super::*;
 
@@ -133,9 +127,9 @@ mod tests {
         Router,
     };
     use dashmap::DashMap;
-    use ipnetwork::{IpNetwork, Ipv4Network};
+    use ipnetwork::Ipv4Network;
     use std::{net::SocketAddr, str::FromStr};
-    use tower::{Layer, ServiceExt};
+    use tower::ServiceExt;
     use tower_http::trace::TraceLayer;
 
     async fn handler() -> impl IntoResponse {

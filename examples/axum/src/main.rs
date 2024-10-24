@@ -19,7 +19,7 @@ async fn main() {
                 // axum logs rejections from built-in extractors with the `axum::rejection`
                 // target, at `TRACE` level. `axum::rejection=trace` enables showing those events
                 format!(
-                    "{}=debug,tower_http=debug,axum::rejection=trace,maxmind_tower=debug",
+                    "{}=debug,tower_http=debug,axum::rejection=trace,tower_ipfilter=debug",
                     env!("CARGO_CRATE_NAME")
                 )
                 .into()

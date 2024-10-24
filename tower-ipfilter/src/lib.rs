@@ -1,5 +1,3 @@
-use std::net::IpAddr;
-
 pub mod types;
 mod compress;
 mod extract;
@@ -9,21 +7,15 @@ pub mod ip_filter;
 pub mod network_filter_service;
 pub mod connection_info_service;
 
-
-
-pub trait IpServiceTrait: Send + Sync {
-    async fn add_ip(&self, ip: IpAddr, reason: String, date: String);
-    fn is_ip_blocked(&self, ip: &IpAddr) -> impl std::future::Future<Output = bool> + Send;
-}
 #[cfg(test)]
 mod tests {
     use dashmap::DashMap;
     use geo_filter::GeoIpv4Filter;
-    use ipnetwork::{IpNetwork, Ipv4Network};
-    use types::{CountryLocation};
+    use ipnetwork::Ipv4Network;
+    use types::CountryLocation;
 
     use super::*;
-    use std::net::{IpAddr, Ipv4Addr};
+    use std::net::Ipv4Addr;
     use std::str::FromStr;
 
     fn create_test_geo_ip_service() -> GeoIpv4Filter {
